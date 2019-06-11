@@ -60,17 +60,19 @@ def compute_difficulty(
         parent_difficulty + offset * adj_factor,
         min(parent_header.difficulty, DIFFICULTY_MINIMUM)
     )
-    num_bomb_periods = (
-        max(
-            0,
-            parent_header.block_number + 1 - bomb_delay,
-        ) // BOMB_EXPONENTIAL_PERIOD
-    ) - BOMB_EXPONENTIAL_FREE_PERIODS
-
-    if num_bomb_periods >= 0:
-        return max(difficulty + 2**num_bomb_periods, DIFFICULTY_MINIMUM)
-    else:
-        return difficulty
+    # TODO : removed diff bomb
+    # num_bomb_periods = (
+    #     max(
+    #         0,
+    #         parent_header.block_number + 1 - bomb_delay,
+    #     ) // BOMB_EXPONENTIAL_PERIOD
+    # ) - BOMB_EXPONENTIAL_FREE_PERIODS
+    #
+    # if num_bomb_periods >= 0:
+    #     return max(difficulty + 2**num_bomb_periods, DIFFICULTY_MINIMUM)
+    # else:
+    #     return difficulty
+    return max(difficulty, DIFFICULTY_MINIMUM)
 
 
 @curry
@@ -106,6 +108,6 @@ def configure_header(difficulty_fn: Callable[[BlockHeader, int], int],
     return header
 
 
-compute_byzantium_difficulty = compute_difficulty(3000000)
+compute_byzantium_difficulty = compute_difficulty(1)
 create_byzantium_header_from_parent = create_header_from_parent(compute_byzantium_difficulty)
 configure_byzantium_header = configure_header(compute_byzantium_difficulty)
