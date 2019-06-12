@@ -166,6 +166,7 @@ class BlockHeader(rlp.Serializable):
     def hex_hash(self) -> str:
         return encode_hex(self.hash)
 
+
     @classmethod
     def from_parent(cls,
                     parent: 'BlockHeader',

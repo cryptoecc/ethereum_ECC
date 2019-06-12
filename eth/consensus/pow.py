@@ -105,19 +105,40 @@ def check_pow(block_number: int,
 
 MAX_TEST_MINE_ATTEMPTS = 10000
 
-def mine_pow_ecc(diffculty_level: str, mining_hash: Hash32, previous_hash: Hash32) -> Tuple[bytes, bytes]:
-    level_args = DIFFCULTY_LEVEL[diffculty_level]
 
-    runECC = subprocess.Popen(["ECCPOW-LDPC.exe", previous_hash, mining_hash,
+def mine_eccpow_nonce(time_diff_level: int, mining_hash: Hash32, previous_hash: Hash32) -> Tuple[bytes, bytes]:
+    # adj_factor come from `header.py` compute difficulty
+    # This is not considered uncle blocks.
+    # TODO: deliver this adj_factor from compute_difficulty result.
+
+    if time_diff_level == 0:
+        difficulty_level = "high"
+    elif time_diff_level >= 1:
+        difficulty_level = "medium"
+    elif time_diff_level >= 2:
+        difficulty_level = "low"
+
+    level_args = DIFFCULTY_LEVEL[difficulty_level]
+
+    runECC = subprocess.Popen(["ECCPOW-LDPC.exe",
+                               str(previous_hash.hex()),
+                               str(mining_hash.hex()),
                                level_args['h'], level_args['wc'], level_args['wr']],
                               stdout=subprocess.PIPE,
                               stderr=subprocess.STDOUT)
-    runECC.wait(300)
+
+    # Raise Exception, mining time over 5 minutes.
+    try:
+        runECC.wait(300)
+    except Exception("Too many attempts at POW mining, giving up"):
+        raise Exception
+
     stdout, stderr = runECC.communicate()
 
-    mining_output = 0
-    nonce = 0
-    return nonce.to_bytes(8, 'big'), mining_output.to_bytes(8, 'big')
+    # just hash of screen result.
+    mining_output = keccak(stdout)
+    nonce = runECC.returncode
+    return nonce.to_bytes(8, 'big'), mining_output
 
 
 def mine_pow_nonce(block_number: int, mining_hash: Hash32, difficulty: int) -> Tuple[bytes, bytes]:
@@ -126,7 +147,6 @@ def mine_pow_nonce(block_number: int, mining_hash: Hash32, difficulty: int) -> T
         mining_output = hashimoto_light(block_number, cache, mining_hash, nonce)
         result = big_endian_to_int(mining_output[b'result'])
         result_cap = 2**256 // (difficulty / 10000)
-        # print(result)
         if result <= result_cap:
             return nonce.to_bytes(8, 'big'), mining_output[b'mix digest']
 
